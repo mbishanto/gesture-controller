@@ -56,6 +56,18 @@ function countFingers(landmarks) {
 
   let count = 0;
 
+  // ======================
+  // THUMB
+  // ======================
+
+  if (landmarks[4].x < landmarks[3].x) {
+    count++;
+  }
+
+  // ======================
+  // OTHER FINGERS
+  // ======================
+
   const tips = [8, 12, 16, 20];
   const pips = [6, 10, 14, 18];
 
@@ -344,7 +356,7 @@ function onResults(results) {
       }
 
       // CLEAR
-      else if (fingers === 4) {
+      else if (fingers === 5) {
 
         drawCtx.clearRect(
           0,
