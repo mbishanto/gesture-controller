@@ -37,6 +37,23 @@
       overflow:hidden;
     }
 
+    .app::after{
+
+      content:"";
+
+      position:absolute;
+      inset:0;
+
+      background:
+      linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.45),
+        rgba(0,0,0,0.2)
+      );
+
+      z-index:1;
+    }
+
     video,
     canvas{
       position:absolute;
@@ -48,7 +65,37 @@
     }
 
     #video{
+
       transform:scaleX(-1);
+
+      filter:
+      brightness(0.45)
+      contrast(1.1)
+      saturate(1.2)
+      blur(1px);
+    }
+
+    .hero-title{
+
+      position:absolute;
+
+      top:50%;
+      left:50%;
+
+      transform:translate(-50%,-50%);
+
+      font-size:90px;
+      font-weight:800;
+
+      letter-spacing:8px;
+
+      color:rgba(255,255,255,0.08);
+
+      z-index:2;
+
+      pointer-events:none;
+
+      text-align:center;
     }
 
     .hud{
@@ -191,12 +238,26 @@
     .logo span{
       color:#00ffae;
     }
+
+    @media(max-width:768px){
+
+      .hero-title{
+        font-size:42px;
+        letter-spacing:4px;
+      }
+
+    }
+
   </style>
 </head>
 
 <body>
 
 <div class="app">
+
+  <div class="hero-title">
+    GESTURE AI SYSTEM
+  </div>
 
   <video id="video" autoplay playsinline></video>
   <canvas id="canvas"></canvas>
@@ -381,7 +442,10 @@ function onResults(results){
       );
 
       canvasCtx.fillStyle = "#00ffae";
+      canvasCtx.shadowColor = "#00ffae";
+      canvasCtx.shadowBlur = 30;
       canvasCtx.fill();
+      canvasCtx.shadowBlur = 0;
     }
   }
 
