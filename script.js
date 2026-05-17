@@ -1,3 +1,4 @@
+```javascript
 const videoElement = document.getElementById("video");
 const canvasElement = document.getElementById("canvas");
 const canvasCtx = canvasElement.getContext("2d");
@@ -18,8 +19,14 @@ let locked = false;
 let prevX = null;
 let prevY = null;
 
+let smoothX = 0;
+let smoothY = 0;
+
 let lastSwipeTime = 0;
 let swipeCooldown = 1200;
+
+let lastLockTime = 0;
+const lockCooldown = 1500;
 
 let fps = 0;
 let lastFrameTime = performance.now();
@@ -31,6 +38,7 @@ let swipePoints = [];
 // ============================
 
 const drawCanvas = document.createElement("canvas");
+
 drawCanvas.width = window.innerWidth;
 drawCanvas.height = window.innerHeight;
 
@@ -81,6 +89,30 @@ function isFist(landmarks) {
 }
 
 // ============================
+// LOCK HANDLER
+// ============================
+
+function handleLockGesture(landmarks) {
+
+  if (
+    isFist(landmarks) &&
+    Date.now() - lastLockTime > lockCooldown
+  ) {
+
+    locked = !locked;
+
+    lastLockTime = Date.now();
+
+    statusText.innerHTML =
+      locked
+      ? "🔒 LOCKED"
+      : "🔓 UNLOCKED";
+
+    resetDraw();
+  }
+}
+
+// ============================
 // SWIPE DETECTION
 // ============================
 
@@ -102,7 +134,7 @@ function detectSwipe(x) {
     swipePoints[0].x;
 
   if (
-    Math.abs(dx) > 0.25 &&
+    Math.abs(dx) > 0.38 &&
     Date.now() - lastSwipeTime > swipeCooldown
   ) {
 
@@ -203,7 +235,7 @@ function onResults(results) {
 
     for (const landmarks of results.multiHandLandmarks) {
 
-      // HAND LINES
+      // HAND CONNECTIONS
       drawConnectors(
         canvasCtx,
         landmarks,
@@ -227,12 +259,17 @@ function onResults(results) {
       // FINGER COUNT
       const fingers = countFingers(landmarks);
 
-      // INDEX FINGER
-      const indexX =
-        landmarks[8].x * canvasElement.width;
+      // SMOOTH POINTER
+      smoothX += (
+        landmarks[8].x * canvasElement.width - smoothX
+      ) * 0.35;
 
-      const indexY =
-        landmarks[8].y * canvasElement.height;
+      smoothY += (
+        landmarks[8].y * canvasElement.height - smoothY
+      ) * 0.35;
+
+      const indexX = smoothX;
+      const indexY = smoothY;
 
       // POINTER GLOW
       canvasCtx.beginPath();
@@ -253,22 +290,24 @@ function onResults(results) {
 
       canvasCtx.shadowBlur = 0;
 
-      // LOCK SYSTEM
-      if (isFist(landmarks)) {
+      // LOCK
+      handleLockGesture(landmarks);
 
-        locked = !locked;
+      if (locked) {
 
-        statusText.innerHTML =
-          locked
-          ? "🔒 LOCKED"
-          : "🔓 UNLOCKED";
+        canvasCtx.fillStyle = "#ff4444";
 
-        resetDraw();
+        canvasCtx.font =
+          "bold 28px Arial";
+
+        canvasCtx.fillText(
+          "LOCKED",
+          20,
+          120
+        );
 
         return;
       }
-
-      if (locked) return;
 
       // MODES
       drawMode = fingers === 1;
@@ -287,7 +326,6 @@ function onResults(results) {
           <br>
           ⚡ FPS: ${fps}
           `;
-
       }
 
       // POINTER MODE
@@ -323,6 +361,20 @@ function onResults(results) {
           `;
       }
 
+      else {
+
+        resetDraw();
+
+        statusText.innerHTML =
+          `
+          ✋ ACTIVE
+          <br>
+          👆 Fingers: ${fingers}
+          <br>
+          ⚡ FPS: ${fps}
+          `;
+      }
+
       // SWIPE
       detectSwipe(landmarks[0].x);
 
@@ -345,9 +397,7 @@ function onResults(results) {
       );
 
       canvasCtx.fillText(
-        locked
-        ? "LOCKED"
-        : "ACTIVE",
+        "ACTIVE",
         20,
         120
       );
@@ -414,3 +464,4 @@ window.addEventListener("resize", () => {
   drawCanvas.height = window.innerHeight;
 
 });
+```
