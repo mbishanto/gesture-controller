@@ -7,7 +7,8 @@ export class GestureSmoothing {
     this._lastChangeTime = 0
     this._lastExecutionTime = 0
     this._cooldownMs = CONFIG.gesture.cooldownMs
-    this._executionCooldownMs = 500
+    this._executionCooldownMs = CONFIG.gesture.cooldownMs
+    this._confidenceThreshold = CONFIG.gesture.confidenceThreshold
   }
 
   filter(gesture) {
@@ -39,7 +40,7 @@ export class GestureSmoothing {
 
     const confidence = maxCount / this._history.length
 
-    if (confidence < CONFIG.gesture.confidenceThreshold) {
+    if (confidence < this._confidenceThreshold) {
       return this._lastStableGesture || 'none'
     }
 
@@ -70,3 +71,4 @@ export class GestureSmoothing {
     this._lastStableGesture = null
   }
 }
+

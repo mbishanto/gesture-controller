@@ -35,9 +35,9 @@ class GestureEngine {
         const handedness = handednessList?.[i] || 'Unknown'
 
         const rawGesture = recognizeGesture(landmarks)
-        const smoothGesture = this._smoothing.filter(rawGesture)
+        let smoothGesture = this._smoothing.filter(rawGesture)
 
-        this._trackHand(i, landmarks, smoothGesture)
+        smoothGesture = this._trackHand(i, landmarks, smoothGesture)
 
         detectedGestures.push({
           gesture: smoothGesture,
@@ -115,7 +115,7 @@ class GestureEngine {
       history.shift()
     }
 
-    if (gesture === GESTURE.WAVE || isWaveGesture(landmarks, history)) {
+    if (isWaveGesture(landmarks, history)) {
       return GESTURE.WAVE
     }
 

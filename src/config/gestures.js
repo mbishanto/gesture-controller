@@ -45,9 +45,9 @@ export const GESTURE_EMOJIS = {
   [GESTURE.OK]: '👌',
   [GESTURE.LOVE]: '🤟',
   [GESTURE.ROCK]: '🤘',
+  [GESTURE.THREE]: '3️⃣',
+  [GESTURE.FOUR]: '4️⃣',
   [GESTURE.WAVE]: '👋',
   [GESTURE.DRAW]: '✍️',
   [GESTURE.PINCH]: '🤏',
-  [GESTURE.THREE]: '🤟',
-  [GESTURE.FOUR]: '🖖',
 }

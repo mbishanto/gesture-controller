@@ -1,7 +1,5 @@
-import CONFIG from '../config/index.js'
-import { GESTURE, GESTURE_LABELS, GESTURE_EMOJIS } from '../config/gestures.js'
+import { GESTURE_LABELS, GESTURE_EMOJIS } from '../config/gestures.js'
 import { ACTION, ACTION_LABELS } from '../config/actions.js'
-import { gestureRegistry } from '../gestures/registry.js'
 import { storageService } from '../services/storage.js'
 
 export class SettingsPanel {
@@ -10,21 +8,26 @@ export class SettingsPanel {
     this._overlay = null
     this._visible = false
     this._onClose = null
+    this._cleanupFns = []
   }
 
   show() {
     if (!this._panel) this._create()
     this._overlay.classList.add('settings--visible')
+    this._panel.classList.remove('hidden')
     this._panel.classList.add('settings--visible')
     this._visible = true
     this._loadSettings()
+    this._panel.querySelector('#settingsClose')?.focus()
   }
 
   hide() {
     if (!this._visible) return
     this._overlay.classList.remove('settings--visible')
     this._panel.classList.remove('settings--visible')
+    this._panel.classList.add('hidden')
     this._visible = false
+    document.querySelector('#btnSettings')?.focus()
   }
 
   toggle() {
@@ -34,20 +37,56 @@ export class SettingsPanel {
   _create() {
     this._overlay = document.createElement('div')
     this._overlay.className = 'settings-overlay'
-    this._overlay.addEventListener('click', (e) => {
+    const overlayHandler = (e) => {
       if (e.target === this._overlay) this.hide()
-    })
+    }
+    this._overlay.addEventListener('click', overlayHandler)
+    this._cleanupFns.push(() => this._overlay.removeEventListener('click', overlayHandler))
 
     this._panel = document.createElement('div')
     this._panel.className = 'settings-panel'
     this._panel.setAttribute('role', 'dialog')
     this._panel.setAttribute('aria-label', 'Settings')
+    this._panel.setAttribute('aria-modal', 'true')
+    this._panel.setAttribute('hidden', '')
 
     this._panel.innerHTML = this._render()
     this._attachEvents()
+    this._attachKeyboardListener()
 
     document.body.appendChild(this._overlay)
     document.body.appendChild(this._panel)
+  }
+
+  _attachKeyboardListener() {
+    const handler = (e) => {
+      if (e.key === 'Escape' && this._visible) {
+        this.hide()
+      }
+      if (e.key === 'Tab' && this._visible) {
+        this._trapFocus(e)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    this._cleanupFns.push(() => document.removeEventListener('keydown', handler))
+  }
+
+  _trapFocus(e) {
+    const focusable = this._panel.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (focusable.length === 0) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
   }
 
   _render() {
@@ -66,10 +105,10 @@ export class SettingsPanel {
         ([id, label]) => `
           <div class="settings__row">
             <div class="settings__gesture-label">
-              <span class="settings__emoji">${GESTURE_EMOJIS[id] || ''}</span>
+              <span class="settings__emoji" aria-hidden="true">${GESTURE_EMOJIS[id] || ''}</span>
               <span>${label}</span>
             </div>
-            <select class="settings__select" data-gesture="${id}">
+            <select class="settings__select" data-gesture="${id}" aria-label="Action for ${label}">
               ${actionOptions}
             </select>
           </div>
@@ -79,21 +118,21 @@ export class SettingsPanel {
 
     return `
       <div class="settings__header">
-        <h2 class="settings__title">Settings</h2>
+        <h2 class="settings__title" id="settingsTitle">Settings</h2>
         <button class="settings__close" id="settingsClose" aria-label="Close settings">&times;</button>
       </div>
 
       <div class="settings__body">
         <section class="settings__section">
-          <h3 class="settings__section-title">📷 Camera</h3>
+          <h3 class="settings__section-title">Camera</h3>
           <div class="settings__row">
-            <label class="settings__label">Camera Source</label>
+            <label class="settings__label" for="settingCamera">Camera Source</label>
             <select class="settings__select" id="settingCamera">
               <option value="default">Default Camera</option>
             </select>
           </div>
           <div class="settings__row">
-            <label class="settings__label">Mirror Camera</label>
+            <label class="settings__label" for="settingMirror">Mirror Camera</label>
             <label class="toggle">
               <input type="checkbox" id="settingMirror" checked>
               <span class="toggle__slider"></span>
@@ -102,31 +141,24 @@ export class SettingsPanel {
         </section>
 
         <section class="settings__section">
-          <h3 class="settings__section-title">🎯 Detection</h3>
+          <h3 class="settings__section-title">Detection</h3>
           <div class="settings__row">
-            <label class="settings__label">Confidence Threshold</label>
+            <label class="settings__label" for="settingConfidence">Confidence Threshold</label>
             <div class="settings__range-group">
-              <input type="range" id="settingConfidence" min="0.3" max="0.95" step="0.05" value="0.7">
+              <input type="range" id="settingConfidence" min="0.3" max="0.95" step="0.05" value="0.7" aria-label="Confidence threshold">
               <span class="settings__range-value" id="confidenceValue">0.70</span>
             </div>
           </div>
           <div class="settings__row">
-            <label class="settings__label">Gesture Sensitivity</label>
-            <div class="settings__range-group">
-              <input type="range" id="settingSensitivity" min="0.1" max="1.0" step="0.05" value="0.5">
-              <span class="settings__range-value" id="sensitivityValue">0.50</span>
-            </div>
-          </div>
-          <div class="settings__row">
-            <label class="settings__label">Gesture Cooldown (ms)</label>
-            <input type="number" id="settingCooldown" min="100" max="2000" step="50" value="300">
+            <label class="settings__label" for="settingCooldown">Gesture Cooldown (ms)</label>
+            <input type="number" id="settingCooldown" min="100" max="2000" step="50" value="300" aria-label="Gesture cooldown in milliseconds">
           </div>
         </section>
 
         <section class="settings__section">
-          <h3 class="settings__section-title">⚡ Performance</h3>
+          <h3 class="settings__section-title">Performance</h3>
           <div class="settings__row">
-            <label class="settings__label">FPS Limit</label>
+            <label class="settings__label" for="settingFpsLimit">FPS Limit</label>
             <select class="settings__select" id="settingFpsLimit">
               <option value="15">15 FPS</option>
               <option value="30" selected>30 FPS</option>
@@ -134,14 +166,14 @@ export class SettingsPanel {
             </select>
           </div>
           <div class="settings__row">
-            <label class="settings__label">Show Landmarks</label>
+            <label class="settings__label" for="settingLandmarks">Show Landmarks</label>
             <label class="toggle">
               <input type="checkbox" id="settingLandmarks" checked>
               <span class="toggle__slider"></span>
             </label>
           </div>
           <div class="settings__row">
-            <label class="settings__label">Show FPS</label>
+            <label class="settings__label" for="settingShowFps">Show FPS</label>
             <label class="toggle">
               <input type="checkbox" id="settingShowFps" checked>
               <span class="toggle__slider"></span>
@@ -150,7 +182,7 @@ export class SettingsPanel {
         </section>
 
         <section class="settings__section">
-          <h3 class="settings__section-title">🎨 Gesture Mapping</h3>
+          <h3 class="settings__section-title">Gesture Mapping</h3>
           <div class="settings__gesture-mappings">
             ${gestureRows}
           </div>
@@ -165,21 +197,32 @@ export class SettingsPanel {
   }
 
   _attachEvents() {
-    this._panel.querySelector('#settingsClose').addEventListener('click', () => this.hide())
-    this._panel.querySelector('#settingsSave').addEventListener('click', () => this._save())
-    this._panel.querySelector('#settingsReset').addEventListener('click', () => this._reset())
+    const closeHandler = () => this.hide()
+    this._panel.querySelector('#settingsClose').addEventListener('click', closeHandler)
+    this._cleanupFns.push(() => this._panel.querySelector('#settingsClose')?.removeEventListener('click', closeHandler))
 
-    this._panel.querySelector('#settingConfidence').addEventListener('input', (e) => {
-      this._panel.querySelector('#confidenceValue').textContent = parseFloat(e.target.value).toFixed(2)
-    })
+    const saveHandler = () => this._save()
+    this._panel.querySelector('#settingsSave').addEventListener('click', saveHandler)
+    this._cleanupFns.push(() => this._panel.querySelector('#settingsSave')?.removeEventListener('click', saveHandler))
 
-    this._panel.querySelector('#settingSensitivity').addEventListener('input', (e) => {
-      this._panel.querySelector('#sensitivityValue').textContent = parseFloat(e.target.value).toFixed(2)
-    })
+    const resetHandler = () => this._reset()
+    this._panel.querySelector('#settingsReset').addEventListener('click', resetHandler)
+    this._cleanupFns.push(() => this._panel.querySelector('#settingsReset')?.removeEventListener('click', resetHandler))
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this._visible) this.hide()
-    })
+    const confidenceHandler = (e) => {
+      const val = this._panel.querySelector('#confidenceValue')
+      if (val) val.textContent = parseFloat(e.target.value).toFixed(2)
+    }
+    this._panel.querySelector('#settingConfidence').addEventListener('input', confidenceHandler)
+    this._cleanupFns.push(() => this._panel.querySelector('#settingConfidence')?.removeEventListener('input', confidenceHandler))
+
+    const cooldownHandler = (e) => {
+      const v = parseInt(e.target.value)
+      if (v < 100) e.target.value = 100
+      if (v > 2000) e.target.value = 2000
+    }
+    this._panel.querySelector('#settingCooldown').addEventListener('change', cooldownHandler)
+    this._cleanupFns.push(() => this._panel.querySelector('#settingCooldown')?.removeEventListener('change', cooldownHandler))
   }
 
   _loadSettings() {
@@ -251,7 +294,14 @@ export class SettingsPanel {
   _reset() {
     storageService.clear()
     this._loadSettings()
-    this._applySettings(storageService.getAll())
+    this._applySettings({
+      mirrorCamera: true,
+      confidenceThreshold: 0.7,
+      gestureCooldown: 300,
+      fpsLimit: 30,
+      showLandmarks: true,
+      showFps: true,
+    })
   }
 
   isVisible() {
@@ -259,7 +309,12 @@ export class SettingsPanel {
   }
 
   destroy() {
+    this._visible = false
+    this._cleanupFns.forEach((fn) => fn())
+    this._cleanupFns = []
     this._overlay?.remove()
     this._panel?.remove()
+    this._overlay = null
+    this._panel = null
   }
 }

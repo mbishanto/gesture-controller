@@ -7,6 +7,7 @@ export class Dashboard {
     this._elements = {}
     this._gestureHistory = []
     this._listeners = []
+    this._callbacks = { settings: null, camera: null }
   }
 
   init(container) {
@@ -28,7 +29,7 @@ export class Dashboard {
           </div>
           <div class="dashboard__header-actions">
             <button class="dashboard__btn" id="btnSettings" aria-label="Settings">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
               </svg>
@@ -41,7 +42,7 @@ export class Dashboard {
             <div class="dashboard__card dashboard__card--gesture" id="gestureCard">
               <div class="card__label">Current Gesture</div>
               <div class="card__gesture-display">
-                <span class="card__gesture-emoji" id="gestureEmoji">🖐️</span>
+                <span class="card__gesture-emoji" id="gestureEmoji" aria-hidden="true">🖐️</span>
                 <span class="card__gesture-name" id="gestureName">Detecting...</span>
               </div>
               <div class="card__confidence">
@@ -94,14 +95,14 @@ export class Dashboard {
         <footer class="dashboard__footer">
           <div class="footer__controls">
             <button class="footer__btn footer__btn--primary" id="btnToggleCamera" aria-label="Toggle camera">
-              <span class="btn-dot"></span>
+              <span class="btn-dot" aria-hidden="true"></span>
               Start Camera
             </button>
             <button class="footer__btn" id="btnToggleLock" aria-label="Toggle lock">
-              🔒 Lock
+              Lock
             </button>
             <button class="footer__btn" id="btnToggleMode" aria-label="Toggle mode">
-              🖱️ Mouse Mode
+              Mouse Mode
             </button>
           </div>
           <div class="footer__hint">
@@ -119,7 +120,8 @@ export class Dashboard {
       'cameraDot', 'cameraStatus', 'handDot', 'handStatus',
       'fpsDisplay', 'modeDisplay',
       'historyList', 'clearHistory',
-      'btnSettings', 'btnToggleCamera', 'btnToggleLock', 'btnToggleMode',
+      'btnSettings', 'btnToggleCamera',
+      'actionCard',
     ]
     for (const id of ids) {
       this._elements[id] = getElement(id)
@@ -127,9 +129,15 @@ export class Dashboard {
   }
 
   _attachListeners() {
-    this._elements.clearHistory?.addEventListener('click', () => {
+    this._on(this._elements.clearHistory, 'click', () => {
       this.clearHistory()
     })
+  }
+
+  _on(el, event, handler) {
+    if (!el) return
+    el.addEventListener(event, handler)
+    this._listeners.push(() => el.removeEventListener(event, handler))
   }
 
   updateGesture(gestureId, confidence = 0, handedness = '') {
@@ -148,7 +156,7 @@ export class Dashboard {
     if (this._elements.actionName) this._elements.actionName.textContent = label
 
     if (actionId && actionId !== 'none') {
-      const card = getElement('actionCard')
+      const card = this._elements.actionCard
       if (card) {
         card.classList.add('card--flash')
         setTimeout(() => card.classList.remove('card--flash'), 500)
@@ -188,9 +196,6 @@ export class Dashboard {
   }
 
   addHistoryEntry(gestureId, actionId, handedness) {
-    const label = GESTURE_LABELS[gestureId] || gestureId
-    const emoji = GESTURE_EMOJIS[gestureId] || ''
-    const actionLabel = ACTION_LABELS[actionId] || ''
     const time = new Date().toLocaleTimeString()
 
     this._gestureHistory.unshift({ gestureId, actionId, time })
@@ -199,53 +204,74 @@ export class Dashboard {
       this._gestureHistory.pop()
     }
 
-    this._renderHistory()
-  }
-
-  _renderHistory() {
     const list = this._elements.historyList
     if (!list) return
 
-    if (this._gestureHistory.length === 0) {
-      list.innerHTML = '<div class="history-empty">No gestures detected yet</div>'
-      return
+    const emptyEl = list.querySelector('.history-empty')
+    if (emptyEl) emptyEl.remove()
+
+    while (list.children.length >= 20) {
+      list.removeChild(list.lastChild)
     }
 
-    list.innerHTML = this._gestureHistory
-      .slice(0, 20)
-      .map(
-        (entry) => `
-          <div class="history-item">
-            <span class="history-item__emoji">${GESTURE_EMOJIS[entry.gestureId] || ''}</span>
-            <span class="history-item__gesture">${GESTURE_LABELS[entry.gestureId] || entry.gestureId}</span>
-            <span class="history-item__action">${ACTION_LABELS[entry.actionId] || ''}</span>
-            <span class="history-item__time">${entry.time}</span>
-          </div>
-        `
-      )
-      .join('')
+    const div = document.createElement('div')
+    div.className = 'history-item'
+    div.innerHTML = `
+      <span class="history-item__emoji">${GESTURE_EMOJIS[gestureId] || ''}</span>
+      <span class="history-item__gesture">${GESTURE_LABELS[gestureId] || gestureId}</span>
+      <span class="history-item__action">${ACTION_LABELS[actionId] || ''}</span>
+      <span class="history-item__time">${time}</span>
+    `
+    list.insertBefore(div, list.firstChild)
   }
 
   clearHistory() {
     this._gestureHistory = []
-    this._renderHistory()
+    const list = this._elements.historyList
+    if (list) {
+      list.innerHTML = '<div class="history-empty">No gestures detected yet</div>'
+    }
   }
 
   onSettingsClick(handler) {
+    this._callbacks.settings = handler
+    if (this._settingsHandlerCleanup) {
+      this._settingsHandlerCleanup()
+      this._listeners = this._listeners.filter(
+        (fn) => fn !== this._settingsHandlerCleanup
+      )
+    }
     this._elements.btnSettings?.addEventListener('click', handler)
+    this._settingsHandlerCleanup = () => {
+      this._elements.btnSettings?.removeEventListener('click', handler)
+    }
+    this._listeners.push(this._settingsHandlerCleanup)
   }
 
   onToggleCamera(handler) {
+    this._callbacks.camera = handler
+    if (this._cameraHandlerCleanup) {
+      this._cameraHandlerCleanup()
+      this._listeners = this._listeners.filter(
+        (fn) => fn !== this._cameraHandlerCleanup
+      )
+    }
     this._elements.btnToggleCamera?.addEventListener('click', handler)
+    this._cameraHandlerCleanup = () => {
+      this._elements.btnToggleCamera?.removeEventListener('click', handler)
+    }
+    this._listeners.push(this._cameraHandlerCleanup)
   }
 
   setCameraButtonLabel(label) {
     const btn = this._elements.btnToggleCamera
-    if (btn) btn.innerHTML = `<span class="btn-dot"></span>${label}`
+    if (btn) btn.innerHTML = `<span class="btn-dot" aria-hidden="true"></span>${label}`
   }
 
   destroy() {
     this._listeners.forEach((fn) => fn())
     this._listeners = []
+    this._elements = {}
+    this._gestureHistory = []
   }
 }

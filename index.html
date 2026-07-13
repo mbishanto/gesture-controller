@@ -2,11 +2,15 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="description" content="AI-powered hand gesture controller for presentations and media" />
-  <meta name="theme-color" content="#050816" />
+  <meta name="theme-color" content="#050816" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f1f5f9" media="(prefers-color-scheme: light)" />
   <meta name="color-scheme" content="dark light" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
 
   <title>GestureAI Controller</title>
 
@@ -15,15 +19,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <!-- MediaPipe (globals: Hands, Camera, drawConnectors, drawLandmarks, HAND_CONNECTIONS) -->
+  <!-- MediaPipe (globals: Hands, drawConnectors, drawLandmarks, HAND_CONNECTIONS) -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js" defer></script>
 
   <!-- Styles -->
   <link rel="stylesheet" href="src/styles/main.css" />
 </head>
 <body>
+
+  <!-- Skip Link for Keyboard Users -->
+  <a class="skip-link" href="#dashboard">Skip to dashboard</a>
 
   <!-- Loading Screen -->
   <div class="loading-screen" id="loading-screen" role="status" aria-label="Loading">

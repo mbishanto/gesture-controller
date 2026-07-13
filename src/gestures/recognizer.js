@@ -196,11 +196,4 @@ function getFingerSpread(landmarks) {
   return Math.abs(idxMcp.x - pinkyMcp.x)
 }
 
-function getHandOrientation(landmarks) {
-  const wrist = landmarks[WRIST_ID]
-  const middleMcp = landmarks[MCP_IDS[2]]
 
-  if (!wrist || !middleMcp) return 'unknown'
-
-  return middleMcp.y < wrist.y ? 'up' : 'down'
-}

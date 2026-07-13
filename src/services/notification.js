@@ -1,3 +1,5 @@
+import { sanitize } from '../utils/helpers.js'
+
 export const NOTIFICATION_TYPES = {
   SUCCESS: 'success',
   ERROR: 'error',
@@ -39,7 +41,7 @@ class NotificationService {
 
     el.innerHTML = `
       <span class="notification__icon">${iconMap[type] || 'ℹ'}</span>
-      <span class="notification__message">${message}</span>
+      <span class="notification__message">${sanitize(message)}</span>
     `
 
     this._container.appendChild(el)
@@ -79,12 +81,23 @@ class NotificationService {
     if (el) {
       el.classList.remove('notification--visible')
       el.classList.add('notification--hiding')
-      setTimeout(() => el.remove(), 300)
+      setTimeout(() => {
+        if (el.parentNode) el.remove()
+      }, 300)
     }
   }
 
   dismissAll() {
-    this._timeouts.forEach((timeout, id) => this._remove(id))
+    const ids = Array.from(this._timeouts.keys())
+    ids.forEach((id) => this._remove(id))
+  }
+
+  destroy() {
+    this.dismissAll()
+    if (this._container?.parentNode) {
+      this._container.remove()
+    }
+    this._container = null
   }
 }
 

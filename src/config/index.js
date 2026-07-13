@@ -25,6 +25,7 @@ const CONFIG = {
     mirrorCamera: true,
     showFps: true,
     showLandmarks: true,
+    gestureCooldown: 300,
   },
   storage: {
     key: 'gesture-controller-settings',
